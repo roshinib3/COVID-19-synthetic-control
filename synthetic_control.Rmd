@@ -1,0 +1,67 @@
+---
+title: "synthetic_control"
+author: "Roshini Balasubramanian"
+date: "1/3/2021"
+output: html_document
+---
+
+# What is Synthetic Control?
+Methodolgy for causal inference using observational data
+
+This empirical technique was introduced in Abadie A, Diamond A, Hainmueller J (2010). Synthetic Control Methods for Comparative Case Studies: Estimating the Effect of California's Tobacco Control Program. Journal of the American Statistical Association 105 (490) 493–505. In this paper, they explore the causal impact of Prop 99, a California state cigarette tax increase approved in 1988, on cigarette sales. In an ideal world, you could conduct A/B testing (treatment vs control) on a California with and without Prop 99, but we obviously can't do this. Instead, you can create a synthetic version of a California without Prop 99 from a linear combination of untreated control units. The weights of each control unit in the linear combination are created from period pre-treatment, and the actual California and synthetic California are compared post-treatment.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(Synth)
+data(synth.data) # load toy panel dataset to demonstrate use of the Synthetic Control Method
+```
+
+```{r}
+synth.data
+#dataframe summary
+#8 units (with names): 1 treated (num 7), 7 controls (nums 2, 13, 17, 29, 32, 36, 38)
+#3 predictors (X1, X2, X3) and 1 outcome variable (Y)
+#time period: 1980-2000
+
+```
+
+# Matrix extraction
+
+```{r}
+dataprep.out <- 
+  dataprep(
+    foo = synth.data,                        # dataframe with panel data
+    predictors = c("X1","X2","X3"),          # identify predictor columns to create control units
+    predictors.op = "mean",                  # specifies the method used for linear combination (aggregated via averaging)
+    dependent = "Y",                         # outcome variable
+    unit.variable = "unit.num",              # indicates the column storing the unit numbers
+    time.variable = "year",                  # indicates the column storing the time data
+    special.predictors = list(               # similar to predictors.op, specifies additional
+      list("Y", 1991, "mean"),               # predictors, pre-treatment years, and operators
+      list("Y", 1985, "mean"),
+      list("Y", 1980, "mean")
+    ),
+    treatment.identifier = 7,                         # indicates treatment group 
+    controls.identifier = c(29, 2, 13, 17, 32, 38),   # indicates control pool
+    time.predictors.prior = c(1984:1989),             # indicates the pretreatment period
+    time.optimize.ssr = c(1984:1990),                 # indicates the periods of dependent variable                                                             over which the lost function is minimized
+    unit.names.variable = "name",                     # indicates the column storing the unit names
+    time.plot = 1984:1996                             # indicates the period to plot over
+  )
+```
+
+
+# Synthetic control group construction
+```{r}
+synth.out <- synth(dataprep.out)            # create synthetic controls
+```
+
+
+# Results
+```{r}
+path.plot(synth.res = synth.out, dataprep.res = dataprep.out, Ylab = "Outcome", Xlab = "Year")
+```
+
